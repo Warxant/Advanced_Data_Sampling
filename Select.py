@@ -2,7 +2,7 @@ import time
 import sqlite3
 import psycopg2
 
-conn = psycopg2.connect(database = 'mybd', user = 'postgres', password = 'psql1488')
+conn = psycopg2.connect(database = 'mybd', user = 'postgres', password = 'postgres')
 with conn.cursor() as cur:
 
 ### Задание №2
