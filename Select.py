@@ -2,19 +2,21 @@ import time
 import sqlite3
 import psycopg2
 
-conn = psycopg2.connect(database = 'mybd', user = 'postgres', password = 'postgres')
+conn = psycopg2.connect(database = 'mybd', user = 'postgres', password = 'psql1488')
 with conn.cursor() as cur:
 
 ### Задание №2
 
-    # longest_track = cur.execute("""SELECT track.name, track.duration
-    #                 FROM Track
-    #                 ORDER BY duration DESC
-    #                 limit 1""");
-    # longest_track = cur.fetchone()
-    # print(f'Самый продолжительный трек: ', end='')
-    # for i in longest_track:
-    #     print(f'{i} ', end='')
+    #  longest_track = cur.execute("""SELECT track.name, track.duration
+    #                     FROM Track
+    #                     WHERE track.duration = (SELECT MAX(track.duration)
+    #                     FROM Track)
+    #                     """);
+    #  longest_track = cur.fetchall()
+    #  print(f'Самый длинные треки: ', end='')
+    #  for i in longest_track:
+    #      for s in i:
+    #         print(f'{s} ', end='')
 #----------------------------------------------------------------------------------------------------------------
     # track_longer_x = cur.execute("""SELECT track.name, track.duration
     #                             FROM Track
@@ -86,32 +88,34 @@ with conn.cursor() as cur:
     # for i in avrg_duration_all_tracks:
     #     print(f'{i[0]} = {i[1]}', end=' ')
 #----------------------------------------------------------------------------------------------------------------
-    # artists_with_no_albums_at_year = cur.execute("""SELECT  artist.name 
-    #                 FROM Artist
-    #                 JOIN ArtistAlbum on Artist.id = ArtistAlbum.artistid
-    #                 JOIN Album on Album.id= ArtistAlbum.artistid 
-    #                 WHERE releasealbum NOT BETWEEN '20200101' AND '20201231' 
-    #                 GROUP BY artist.name""")
+    # artists_with_no_albums_at_year = cur.execute("""SELECT artist.name FROM artist
+    #                                             LEFT JOIN
+    #                                                 (SELECT DISTINCT artist.id, artist.name FROM artist
+    #                                                 JOIN artistalbum ON artistalbum.artistid = artist.id
+    #                                                 JOIN album ON album.id = artistalbum.albumid
+    #                                                 WHERE album.releasealbum >= '2020-01-01' and album.releasealbum <= '2020-12-31')
+    #                                                 AS ty
+    #                                             ON artist.id = ty.id
+    #                                             WHERE ty.id IS NULL""")
     # artists_with_no_albums_at_year = cur.fetchall()
     # print(f'Артисты не выпустившие альбомы в 2020 году: ', end='')
     # for i in artists_with_no_albums_at_year:
     #     for s in i:
     #         print(f'{s}, ', end='')
 #----------------------------------------------------------------------------------------------------------------
-    # artist_in_collection = cur.execute("""SELECT collection.name 
-    #                 FROM Collection
-    #                 JOIN CollectionTrack on CollectionTrack.collectionid = Collection.id
-    #                 JOIN Track on CollectionTrack.collectionid = Track.id
-    #                 JOIN Album on Track.id = Album.id
-    #                 JOIN ArtistAlbum on ArtistAlbum.Albumid = Album.id
-    #                 JOIN Artist on ArtistAlbum.Albumid = Artist.id
-    #                 WHERE artist.name = 'Агата Кристи'
-    #                 group by collection.name
-    #                 """)   
+    # artist_in_collection = cur.execute(f"""SELECT DISTINCT collection.name FROM collection
+    #                                      JOIN collectiontrack ON collectiontrack.collectionid = collection.id
+    #                                      JOIN track ON track.id = collectiontrack.trackid
+    #                                      JOIN album ON track.albumid = album.id
+    #                                      JOIN artistalbum ON album.id = artistalbum.albumid
+    #                                      JOIN artist ON artist.id = artistalbum.artistid
+    #                                      WHERE artist.id = (SELECT id FROM artist
+    #                                                            WHERE name = 'Агата Кристи');""")
+       
     # artist_in_collection = cur.fetchall()
     # print('Названия сборников, в которых присутствует конкретный исполнитель: ', end='')
     # for i in artist_in_collection:
-    #     print(i[0])
+    #     print(i[0], end=' ')
 #----------------------------------------------------------------------------------------------------------------
 ### Задание №4
     # artist_two_genres = cur.execute("""select album.name, count(genres.name) 
@@ -136,29 +140,59 @@ with conn.cursor() as cur:
     # for i in track_out_collection:
     #            print(f'{i[0]}. ', end='')
 #---------------------------------------------------------------------------------------------------------------
-    # the_shortest_track = cur.execute("""SELECT artist.name, st.name, st.duration
-    #                                 FROM (SELECT id, name, albumid, duration
-    #                                 FROM track
-    #                                 WHERE duration = (SELECT MIN(track.duration) FROM track)) AS st
-    #                                 JOIN album ON album.id = st.albumid
-    #                                 JOIN artistalbum ON artistalbum.albumid = album.id               
-    #                                 JOIN artist ON artist.id = artistalbum.artistid;""")
-    # the_shortest_track = cur.fetchall()
-    # print('Исполнитель или исполнители, написавшие самый короткий по продолжительности трек, — теоретически таких треков может быть несколько: ', end='')   
-    # for i in the_shortest_track:
-    #     for s in i:
-    #         print(f'{s} ', end='')       
+    cur.execute("""select artist.name, track.duration from Track
+                join Album on Track.albumid = Album.id
+                join ArtistAlbum on ArtistAlbum.albumid = Album.id
+                join Artist on ArtistAlbum.artistid = Artist.id
+                where track.duration = (select min(track.duration) from track)
+                
+                """)
+    the_shortest_track = cur.fetchall()
+    print('Исполнитель или исполнители, написавшие самый короткий по продолжительности трек: ', end='')   
+    for i in the_shortest_track:
+        for s in i:
+            print(f'{s} ', end='')
 #---------------------------------------------------------------------------------------------------------------
-    # smallest_album = cur.execute("""WITH tc AS 
-    #             (SELECT album.name, COUNT(*) as count FROM album
-    #             JOIN track ON track.albumid = album.id
-    #             GROUP BY album.id)
-    #             SELECT tc.name, tc.count FROM tc                                                 
-    #             WHERE tc.count = (SELECT MIN(count) FROM tc);""")
+    # smallest_album = cur.execute("""SELECT album.name, COUNT(track.name) track_count FROM album 
+    #             JOIN track ON album.id = track.albumid
+    #             GROUP BY album.id
+    #             HAVING COUNT(track.name) = (  
+	#             SELECT COUNT(track.name) FROM album
+	#             JOIN track ON album.id = track.albumid
+	#             GROUP BY album.id
+	#             ORDER BY COUNT(track.name)
+	#             LIMIT 1);""")
     # smallest_album = cur.fetchone()
     # print('Названия альбомов, содержащих наименьшее количество треков: ', end='')
     # for i in smallest_album:
-    #    print(f'{i}', end=' ')
+    #     print(f'{i}', end=' ')
+   
+
+
+
+
+    cur.execute("""select artist.name, track.duration from Track
+                join Album on Track.albumid = Album.id
+                join ArtistAlbum on ArtistAlbum.albumid = Album.id
+                join Artist on ArtistAlbum.artistid = Artist.id
+                where track.duration = (select min(track.duration) from track)
+                
+                """)
+    the_shortest_track = cur.fetchall()
+    print('Исполнитель или исполнители, написавшие самый короткий по продолжительности трек: ', end='')   
+    for i in the_shortest_track:
+        for s in i:
+            print(f'{s} ', end='')
+
+
+    
+
+
+
+
+
+
+
 
     conn.commit()
 conn.close()

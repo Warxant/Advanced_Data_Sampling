@@ -25,7 +25,7 @@ genre = ['punk-rock', 'horror-punk', 'gothic-rock',
 
 
 
-conn = psycopg2.connect(database = 'mybd', user = 'postgres', password = 'postgres')
+conn = psycopg2.connect(database = 'mybd', user = 'postgres', password = 'psql1488')
 with conn.cursor() as cur:
 
     
@@ -99,7 +99,6 @@ with conn.cursor() as cur:
                 (5, 'collection_5', '20231121')
                 ON CONFLICT DO NOTHING''');                
 
-
     cur.execute(f'''INSERT INTO CollectionTrack (CollectionId, TrackId)
                 VALUES (1, 2),
                 (1, 4),
@@ -113,10 +112,10 @@ with conn.cursor() as cur:
                 (5, 27)            
                 ON CONFLICT DO NOTHING''');                
     
+
     conn.commit()
 
 conn.close()       
-    
     
     
     
